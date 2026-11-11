@@ -844,42 +844,176 @@
         }
 
         async function exportToExcel() {
-            const wb = new ExcelJS.Workbook();
-            const ws = wb.addWorksheet('Inspecciones Botiquines');
+    try {
+        const savedData = localStorage.getItem('sst_botiquin_data');
+        const currentInspections = savedData ? JSON.parse(savedData) : inspections;
 
-            ws.columns = [
-                { header: 'Fecha', key: 'fecha', width: 14 },
-                { header: 'ID Botiquín', key: 'id', width: 14 },
-                { header: 'Ubicación', key: 'ubicacion', width: 26 },
-                { header: 'Tipo', key: 'tipo', width: 12 },
-                { header: 'Subtipo', key: 'sub', width: 18 },
-                { header: 'Capacidad', key: 'capacidad', width: 14 },
-                { header: 'Estado', key: 'estado', width: 14 },
-                { header: 'Inspector', key: 'inspector', width: 18 },
-                { header: 'Próxima Revisión', key: 'venc', width: 16 }
-            ];
-
-            inspections.forEach(item => {
-                ws.addRow({
-                    fecha: item.lastInspection,
-                    id: item.id,
-                    ubicacion: item.location,
-                    tipo: item.type,
-                    sub: item.sub,
-                    capacidad: item.capacity,
-                    estado: item.status,
-                    inspector: item.inspector,
-                    venc: item.expiryDate || '2027-05-15'
-                });
-            });
-
-            ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
-            ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B5E20' } };
-
-            const buffer = await wb.xlsx.writeBuffer();
-            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            saveAs(blob, 'Control_Inspeccion_Botiquines_FalconFarms.xlsx');
+        if (!currentInspections || currentInspections.length === 0) {
+            alert('No hay registros de inspección para exportar.');
+            return;
         }
+
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Sistema SST - Control e Inspección de Botiquines';
+        workbook.created = new Date();
+
+        const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B5E20' } };
+        const thinBorder = {
+            top: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+            left: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+            bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+            right: { style: 'thin', color: { argb: 'FFDDDDDD' } }
+        };
+
+        // -------------------------------------------------------------
+        // HOJA 1: RESUMEN EJECUTIVO DE BOTIQUINES
+        // -------------------------------------------------------------
+        const sheet1 = workbook.addWorksheet('Inspecciones Botiquines', {
+            pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+        });
+
+        // Insertar Logo Corporativo automáticamente desde assets/logo.png
+        try {
+            const logoResponse = await fetch('assets/logo.png');
+            const logoBlob = await logoResponse.blob();
+            const arrayBuffer = await logoBlob.arrayBuffer();
+            const logoId = workbook.addImage({ buffer: arrayBuffer, extension: 'png' });
+            sheet1.addImage(logoId, { tl: { col: 0.1, row: 0.1 }, ext: { width: 80, height: 80 } });
+        } catch (e) {
+            console.warn('No se pudo cargar el logo:', e);
+        }
+
+        // Título centralizado
+        sheet1.mergeCells('C1:I2');
+        const titleCell = sheet1.getCell('C1');
+        titleCell.value = "FALCON FARMS\nSISTEMA DE CONTROL E INSPECCIÓN DE BOTIQUINES - SST";
+        titleCell.font = { size: 15, bold: true, color: { argb: 'FF1B5E20' }, name: 'Calibri' };
+        titleCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+        sheet1.mergeCells('C3:I3');
+        const subCell = sheet1.getCell('C3');
+        subCell.value = `Reporte generado el ${new Date().toLocaleDateString('es-CO')} a las ${new Date().toLocaleTimeString('es-CO')}  —  Total de registros: ${currentInspections.length}`;
+        subCell.font = { size: 9, italic: true, color: { argb: 'FF666666' } };
+        subCell.alignment = { horizontal: 'center' };
+
+        // Encabezados exactos para Botiquines
+        const headerRowIndex = 5;
+        const headers1 = ["Fecha Inspección", "ID Botiquín", "Ubicación", "Tipo", "Subtipo", "Capacidad", "Estado", "Inspector", "Próxima Revisión"];
+        const headerRow1 = sheet1.getRow(headerRowIndex);
+        headers1.forEach((h, i) => { headerRow1.getCell(i + 1).value = h; });
+        
+        headerRow1.eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = headerFill;
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            cell.border = thinBorder;
+        });
+        headerRow1.height = 26;
+
+        sheet1.columns = [
+            { width: 16 }, { width: 14 }, { width: 26 }, { width: 12 }, 
+            { width: 18 }, { width: 14 }, { width: 16 }, { width: 20 }, { width: 16 }
+        ];
+
+        currentInspections.forEach((item, idx) => {
+            const rowIndex = headerRowIndex + 1 + idx;
+            const row = sheet1.getRow(rowIndex);
+            row.getCell(1).value = item.lastInspection || '';
+            row.getCell(2).value = item.id || '';
+            row.getCell(3).value = item.location || '';
+            row.getCell(4).value = item.type || 'Tipo A';
+            row.getCell(5).value = item.sub || 'Gabinete Fijo';
+            row.getCell(6).value = item.capacity || 'Mediano';
+            row.getCell(7).value = item.status || 'OK';
+            row.getCell(8).value = item.inspector || '';
+            row.getCell(9).value = item.expiryDate || '2027-05-15';
+
+            // Formato condicional de Estado
+            let fillColor = 'FFC8E6C9'; // Verde OK
+            if (item.status === 'Próximo a Vencer') fillColor = 'FFFFE0B2'; // Amarillo
+            if (item.status === 'Inoperativo') fillColor = 'FFFFCDD2'; // Rojo
+            row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillColor } };
+            row.getCell(7).font = { bold: true };
+
+            if (idx % 2 === 1) {
+                row.eachCell({ includeEmpty: true }, cell => {
+                    if (!cell.fill || cell.fill.fgColor.argb === undefined) {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF7F7F7' } };
+                    }
+                });
+            }
+
+            row.eachCell(cell => {
+                cell.border = thinBorder;
+                cell.alignment = { vertical: 'middle' };
+            });
+        });
+
+        sheet1.autoFilter = { from: { row: headerRowIndex, column: 1 }, to: { row: headerRowIndex, column: headers1.length } };
+        sheet1.views = [{ state: 'frozen', ySplit: headerRowIndex }];
+
+        // -------------------------------------------------------------
+        // HOJA 2: EVIDENCIAS FOTOGRÁFICAS Y FIRMAS
+        // -------------------------------------------------------------
+        const sheet3 = workbook.addWorksheet('Evidencias y Firmas');
+        sheet3.columns = Array(10).fill(0).map(() => ({ width: 16 }));
+
+        let currentRow = 2;
+        currentInspections.forEach(item => {
+            sheet3.mergeCells(`A${currentRow}:J${currentRow}`);
+            const headerCell = sheet3.getCell(`A${currentRow}`);
+            headerCell.value = `BOTIQUÍN: ${item.id || 'S/N'}  |  Ubicación: ${item.location || ''}  |  Inspector: ${item.inspector || 'N/A'}  |  Estado: ${item.status || 'OK'}`;
+            headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E7D32' } };
+            headerCell.alignment = { vertical: 'middle' };
+            sheet3.getRow(currentRow).height = 22;
+            currentRow += 2;
+
+            const photos = item.photos || [];
+            if (photos.length > 0) {
+                sheet3.getCell(`A${currentRow}`).value = 'Fotos de Inspección:';
+                sheet3.getCell(`A${currentRow}`).font = { bold: true };
+                let photoCol = 1;
+                let photoRow = currentRow + 1;
+                sheet3.getRow(photoRow).height = 85;
+
+                photos.forEach((p, i) => {
+                    const match = /^data:image\/(\w+);base64,(.+)$/.exec(p || '');
+                    if (match) {
+                        let ext = match[1].toLowerCase();
+                        if (ext === 'jpg') ext = 'jpeg';
+                        const imgId = workbook.addImage({ base64: match[2], extension: ext });
+                        sheet3.addImage(imgId, { tl: { col: photoCol, row: photoRow - 1 }, ext: { width: 100, height: 100 } });
+                    }
+                    photoCol++;
+                });
+                currentRow = photoRow + 6;
+            }
+
+            if (item.signature) {
+                sheet3.getCell(`A${currentRow}`).value = 'Firma Inspector:';
+                sheet3.getCell(`A${currentRow}`).font = { bold: true };
+                sheet3.getRow(currentRow + 1).height = 50;
+                const matchSig = /^data:image\/(\w+);base64,(.+)$/.exec(item.signature || '');
+                if (matchSig) {
+                    const sigId = workbook.addImage({ base64: matchSig[2], extension: 'png' });
+                    sheet3.addImage(sigId, { tl: { col: 1, row: currentRow }, ext: { width: 140, height: 55 } });
+                }
+                currentRow += 4;
+            }
+            currentRow += 2;
+        });
+
+        // Descargar el archivo Excel (.xlsx) final
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Control_Inspeccion_Botiquines_FalconFarms_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    } catch (err) {
+        console.error(err);
+        alert('Ocurrió un error al generar el archivo Excel: ' + err.message);
+    }
+}
     </script>
 </body>
 </html>
