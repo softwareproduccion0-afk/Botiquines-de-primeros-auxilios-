@@ -872,15 +872,25 @@
             pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
         });
 
-        // Insertar Logo Corporativo automáticamente desde assets/logo.png
+        // Insertar Logo Corporativo automáticamente desde el Navbar de la página
         try {
-            const logoResponse = await fetch('assets/logo.png');
-            const logoBlob = await logoResponse.blob();
-            const arrayBuffer = await logoBlob.arrayBuffer();
-            const logoId = workbook.addImage({ buffer: arrayBuffer, extension: 'png' });
-            sheet1.addImage(logoId, { tl: { col: 0.1, row: 0.1 }, ext: { width: 80, height: 80 } });
+            const navbarImg = document.querySelector('.navbar-brand img');
+            if (navbarImg) {
+                const canvas = document.createElement('canvas');
+                canvas.width = navbarImg.naturalWidth || 80;
+                canvas.height = navbarImg.naturalHeight || 80;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(navbarImg, 0, 0);
+                const base64Data = canvas.toDataURL('image/png').split(',')[1];
+                
+                const logoId = workbook.addImage({
+                    base64: base64Data,
+                    extension: 'png'
+                });
+                sheet1.addImage(logoId, { tl: { col: 0.1, row: 0.1 }, ext: { width: 80, height: 80 } });
+            }
         } catch (e) {
-            console.warn('No se pudo cargar el logo:', e);
+            console.warn('No se pudo incrustar el logo:', e);
         }
 
         // Título centralizado
@@ -953,7 +963,31 @@
         sheet1.views = [{ state: 'frozen', ySplit: headerRowIndex }];
 
         // -------------------------------------------------------------
-        // HOJA 2: EVIDENCIAS FOTOGRÁFICAS Y FIRMAS
+        // HOJA 2: DETALLE DEL CHECKLIST DE LOS 20 ELEMENTOS
+        // -------------------------------------------------------------
+        const sheet2 = workbook.addWorksheet('Detalle Checklist Insumos');
+        const headers2 = ["ID Botiquín", "Ubicación", "Inspector", ...checklistItems];
+        
+        const headerRow2 = sheet2.getRow(1);
+        headers2.forEach((h, i) => { headerRow2.getCell(i + 1).value = h; });
+        headerRow2.eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = headerFill;
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.border = thinBorder;
+        });
+
+        currentInspections.forEach((item) => {
+            const rowData = [item.id, item.location, item.inspector];
+            checklistItems.forEach(checkName => {
+                const checkInfo = (item.checklist && item.checklist[checkName]) ? item.checklist[checkName] : { result: 'Cumple', obs: 'OK' };
+                rowData.push(`${checkInfo.result} (${checkInfo.obs})`);
+            });
+            sheet2.addRow(rowData);
+        });
+
+        // -------------------------------------------------------------
+        // HOJA 3: EVIDENCIAS FOTOGRÁFICAS Y FIRMAS
         // -------------------------------------------------------------
         const sheet3 = workbook.addWorksheet('Evidencias y Firmas');
         sheet3.columns = Array(10).fill(0).map(() => ({ width: 16 }));
