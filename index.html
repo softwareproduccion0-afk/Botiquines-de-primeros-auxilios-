@@ -254,18 +254,21 @@
                     </div>
 
                     <div class="row g-3">
-                        <div class="col-12">
+                        <div class="col-md-6">
                             <label class="form-label fw-bold">Número / ID Botiquín *</label>
                             <select id="ext-id" class="form-select fw-bold text-success" required onchange="autoFillExtinguisherData()">
                                 <option value="">Seleccione o escanee...</option>
                             </select>
-                            <!-- Campo oculto para mantener compatibilidad con la lógica interna de ubicación -->
                             <input type="hidden" id="ext-location">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Próxima Revisión *</label>
+                            <input type="date" id="ext-expiry" class="form-control" required>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tabla de Verificación (16 puntos oficiales) -->
+                <!-- Tabla de Verificación (20 puntos oficiales) -->
                 <div class="card card-custom p-4 mb-4">
                     <h4 class="header-title border-bottom pb-2 mb-3">
                         <i class="fa-solid fa-list-check me-2"></i>Verificación del Botiquín (Criterios SST)
@@ -298,11 +301,6 @@
                             <option value="Próximo a Vencer" class="text-warning fw-bold">🟡 REQUIERE REPOSICIÓN / MANTENIMIENTO</option>
                             <option value="Inoperativo" class="text-danger fw-bold">🔴 NO CONFORME / FUERA DE SERVICIO</option>
                         </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Fecha Límite / Próxima Revisión *</label>
-                        <input type="date" id="ext-expiry" class="form-control" required>
                     </div>
 
                     <div class="mb-3">
@@ -359,12 +357,14 @@
                         <thead class="table-dark">
                             <tr>
                                 <th>Fecha</th>
-                                <th>ID</th>
+                                <th>ID Botiquín</th>
                                 <th>Ubicación</th>
-                                <th>Tipo / Tamaño</th>
+                                <th>Tipo</th>
+                                <th>Subtipo</th>
+                                <th>Capacidad</th>
                                 <th>Estado</th>
                                 <th>Inspector</th>
-                                <th>Evidencias</th>
+                                <th>Próxima Revisión</th>
                                 <th class="text-center">Acción</th>
                             </tr>
                         </thead>
@@ -415,19 +415,19 @@
 
     <script>
         const checklistItems = [
-            "AEROMÁSCARA",
-            "CINTA MICROPORE",
+            "SOLUCION SALINA (1)",   
+            "AEROMÁSCARA (1)",
+            "CINTA MICROPORE (1)",
             "ESFERO",
             "LIBRETA",
-            "PARCHE OCULAR",
+            "PARCHE OCULAR (5)",
             "TIJERA",
-            "SOLUCIÓN SALINA",
-            "VENDA",
-            "GUANTE ESTÉRIL",
-            "CURITAS",
-            "GASAS",
+            "VENDA (3)",
+            "GUANTE ESTÉRIL (5)",
+            "CURITAS (10)",
+            "GASAS (20)",
             "APLICADORES DE MADERA",
-            "BAJA LENGUAS",
+            "BAJA LENGUAS (5)",
             "TODOS LOS ELEMENTOS SE ENCUENTRAN...",
             "¿SE ENCUENTRA SEÑALIZADO?",
             "¿EN CORRECTO ESTADO DE ORDEN Y ASEO?",
@@ -657,24 +657,12 @@
             if (index >= 0) { inspections[index] = newRecord; } else { inspections.unshift(newRecord); }
             saveStorage();
 
-            const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzdFna7hLB0P_avjZpLZztp51V7Elv2tn6kk-w03ND-3-fogy8qM4bdpspqdfpqT13y/exec";
-            fetch(WEB_APP_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newRecord)
-            })
-            .then(() => {
-                alert(`¡Inspección guardada y sincronizada en la nube para el botiquín ${extId}!`);
-                document.getElementById('form-extinguisher').reset();
-                currentPhotos = [];
-                renderPhotoPreviews();
-                clearSignature();
-                showSection('dashboard');
-            })
-            .catch(error => {
-                alert("Guardado localmente, pero ocurrió un error al enviar a la nube: " + error);
-            });
+            alert(`¡Inspección guardada exitosamente para el botiquín ${extId}!`);
+            document.getElementById('form-extinguisher').reset();
+            currentPhotos = [];
+            renderPhotoPreviews();
+            clearSignature();
+            showSection('dashboard');
         }
 
         function openQRModal() {
@@ -729,10 +717,12 @@
                     <td>${item.lastInspection}</td>
                     <td class="fw-bold text-success">${item.id}</td>
                     <td>${item.location}</td>
-                    <td>${item.type} (${item.capacity})</td>
+                    <td>${item.type}</td>
+                    <td>${item.sub}</td>
+                    <td>${item.capacity}</td>
                     <td><span class="badge ${badgeClass}">${item.status}</span></td>
                     <td>${item.inspector}</td>
-                    <td><span class="badge bg-secondary">${(item.photos || []).length} Fotos</span></td>
+                    <td>${item.expiryDate || '2025-05-15'}</td>
                     <td class="text-center">
                         <button class="btn btn-sm btn-outline-primary mb-1" onclick="viewDetail('${item.id}')">
                             <i class="fa-solid fa-eye"></i> Ver
@@ -773,9 +763,10 @@
             document.getElementById('modal-detail-body').innerHTML = `
                 <p><strong>Fecha:</strong> ${item.lastInspection}</p>
                 <p><strong>Ubicación:</strong> ${item.location}</p>
-                <p><strong>Tipo / Capacidad:</strong> ${item.type} - ${item.capacity} (${item.sub})</p>
+                <p><strong>Tipo / Subtipo / Capacidad:</strong> ${item.type} - ${item.sub} (${item.capacity})</p>
                 <p><strong>Estado / Dictamen:</strong> <span class="badge ${item.status === 'OK' ? 'badge-ok' : item.status === 'Próximo a Vencer' ? 'badge-warn' : 'badge-danger'}">${item.status}</span></p>
                 <p><strong>Inspector:</strong> ${item.inspector}</p>
+                <p><strong>Próxima Revisión:</strong> ${item.expiryDate || '2025-05-15'}</p>
                 <hr>
                 <h6 class="fw-bold">Lista de Verificación:</h6>
                 ${checklistHtml}
@@ -833,7 +824,7 @@
                         </tr>
                         <tr>
                             <td style="padding: 5px; border: 1px solid #ddd;"><strong>Inspector:</strong> ${item.inspector}</td>
-                            <td style="padding: 5px; border: 1px solid #ddd;"><strong>Fecha Inspección:</strong> ${item.lastInspection}</td>
+                            <td style="padding: 5px; border: 1px solid #ddd;"><strong>Próxima Revisión:</strong> ${item.expiryDate || '2025-05-15'}</td>
                         </tr>
                     </table>
 
@@ -866,15 +857,15 @@
             const ws = wb.addWorksheet('Inspecciones Botiquines');
 
             ws.columns = [
-                { header: 'Fecha', key: 'fecha', width: 15 },
-                { header: 'ID Botiquín', key: 'id', width: 15 },
-                { header: 'Ubicación', key: 'ubicacion', width: 25 },
-                { header: 'Tipo', key: 'tipo', width: 15 },
-                { header: 'Subtipo', key: 'sub', width: 20 },
-                { header: 'Capacidad', key: 'capacidad', width: 15 },
-                { header: 'Estado', key: 'estado', width: 20 },
-                { header: 'Inspector', key: 'inspector', width: 20 },
-                { header: 'Próxima Revisión', key: 'venc', width: 18 }
+                { header: 'Fecha', key: 'fecha', width: 14 },
+                { header: 'ID Botiquín', key: 'id', width: 14 },
+                { header: 'Ubicación', key: 'ubicacion', width: 26 },
+                { header: 'Tipo', key: 'tipo', width: 12 },
+                { header: 'Subtipo', key: 'sub', width: 18 },
+                { header: 'Capacidad', key: 'capacidad', width: 14 },
+                { header: 'Estado', key: 'estado', width: 14 },
+                { header: 'Inspector', key: 'inspector', width: 18 },
+                { header: 'Próxima Revisión', key: 'venc', width: 16 }
             ];
 
             inspections.forEach(item => {
@@ -887,7 +878,7 @@
                     capacidad: item.capacity,
                     estado: item.status,
                     inspector: item.inspector,
-                    venc: item.expiryDate
+                    venc: item.expiryDate || '2025-05-15'
                 });
             });
 
