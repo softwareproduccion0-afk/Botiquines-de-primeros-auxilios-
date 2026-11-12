@@ -136,11 +136,12 @@
     </style>
 </head>
 <body>
-<!-- Navbar -->
+
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top shadow-sm no-print">
         <div class="container-fluid max-w-7xl">
             <a class="navbar-brand d-flex align-items-center gap-2 font-bold" href="#">
-                <img src="assets/logo.png" alt="Logo de la empresa" style="height:36px; width:36px; object-fit:contain; border-radius:50%; background:#fff; padding:2px;">
+                <img id="navbar-logo" src="assets/logo.png" alt="Logo de la empresa" style="height:36px; width:36px; object-fit:contain; border-radius:50%; background:#fff; padding:2px;">
                 <span>SST BOTIQUINES - CONTROL E INSPECCIÓN</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -339,7 +340,8 @@
 
             </form>
         </div>
-<!-- SECTION 3: HISTORIAL -->
+
+        <!-- SECTION 3: HISTORIAL -->
         <div id="section-history" class="app-section d-none">
             <div class="card card-custom p-4">
                 <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
@@ -588,8 +590,7 @@
             currentPhotos.splice(index, 1);
             renderPhotoPreviews();
         }
-
-        function initSignaturePad() {
+function initSignaturePad() {
             const canvas = document.getElementById('signature-pad');
             signaturePad = new SignaturePad(canvas, {
                 penColor: '#1b5e20',
@@ -842,7 +843,23 @@
 
             window.print();
         }
-async function exportToExcel() {
+function obtenerLogoDesdeNavbar() {
+            try {
+                const img = document.getElementById('navbar-logo');
+                if (!img || !img.complete || img.naturalWidth === 0) return null;
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                return canvas.toDataURL('image/png');
+            } catch (e) {
+                console.warn("No se pudo leer el logo del navbar:", e);
+                return null;
+            }
+        }
+
+        async function exportToExcel() {
             try {
                 const savedData = localStorage.getItem('sst_botiquin_data');
                 const currentInspections = savedData ? JSON.parse(savedData) : inspections;
@@ -871,18 +888,40 @@ async function exportToExcel() {
                     pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
                 });
 
+                // 1. Espacio para el Logo en la Columna A (A1:A3)
+                sheet1.mergeCells('A1:A3');
+                sheet1.getRow(1).height = 22;
+                sheet1.getRow(2).height = 22;
+                sheet1.getRow(3).height = 18;
+
+                // Capturar logo automáticamente desde la barra superior e insertarlo en la Columna A
+                const logoBase64 = obtenerLogoDesdeNavbar();
+                if (logoBase64) {
+                    const base64Data = logoBase64.split(',')[1];
+                    const logoId = workbook.addImage({
+                        base64: base64Data,
+                        extension: 'png'
+                    });
+                    sheet1.addImage(logoId, {
+                        tl: { col: 0.2, row: 0.15 },
+                        ext: { width: 85, height: 55 }
+                    });
+                }
+
+                // 2. Título corporativo a la derecha del logo (B1:I2)
                 sheet1.mergeCells('B1:I2');
                 const titleCell = sheet1.getCell('B1');
                 titleCell.value = "FALCON FARMS - SSTA\nSISTEMA DE CONTROL E INSPECCIÓN DE BOTIQUINES";
-                titleCell.font = { size: 14, bold: true, color: { argb: 'FF1B5E20' }, name: 'Calibri' };
+                titleCell.font = { size: 13, bold: true, color: { argb: 'FF1B5E20' }, name: 'Calibri' };
                 titleCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
                 sheet1.mergeCells('B3:I3');
                 const subCell = sheet1.getCell('B3');
                 subCell.value = `Reporte generado el ${new Date().toLocaleDateString('es-CO')} a las ${new Date().toLocaleTimeString('es-CO')}  —  Total de registros: ${currentInspections.length}`;
                 subCell.font = { size: 9, italic: true, color: { argb: 'FF666666' } };
-                subCell.alignment = { horizontal: 'center' };
+                subCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
+                // Encabezados de la tabla a partir de la fila 5
                 const headerRowIndex = 5;
                 const headers1 = ["Fecha Inspección", "ID Botiquín", "Ubicación", "Tipo", "Subtipo", "Capacidad", "Estado", "Inspector", "Próxima Revisión"];
                 const headerRow1 = sheet1.getRow(headerRowIndex);
@@ -897,7 +936,7 @@ async function exportToExcel() {
                 headerRow1.height = 26;
 
                 sheet1.columns = [
-                    { width: 16 }, { width: 14 }, { width: 26 }, { width: 12 }, 
+                    { width: 18 }, { width: 14 }, { width: 26 }, { width: 12 }, 
                     { width: 18 }, { width: 14 }, { width: 16 }, { width: 20 }, { width: 16 }
                 ];
 
