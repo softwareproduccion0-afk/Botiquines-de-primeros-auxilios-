@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- Librería Especializada de Firma Digital -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-    <!-- Librería para generar archivos Excel (.xlsx) reales con imágenes, estilos y formato empresarial -->
+    <!-- Librería para generar archivos Excel (.xlsx) reales -->
     <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
     <!-- Librería para disparar la descarga del archivo generado -->
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
@@ -136,8 +136,7 @@
     </style>
 </head>
 <body>
-
-    <!-- Navbar -->
+<!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top shadow-sm no-print">
         <div class="container-fluid max-w-7xl">
             <a class="navbar-brand d-flex align-items-center gap-2 font-bold" href="#">
@@ -173,7 +172,8 @@
             </div>
         </div>
     </nav>
-<!-- Main Container -->
+
+    <!-- Main Container -->
     <div class="container my-4 no-print">
 
         <!-- SECTION 1: DASHBOARD -->
@@ -239,8 +239,7 @@
                 </div>
             </div>
         </div>
-
-        <!-- SECTION 2: FORMULARIO DE INSPECCIÓN DETALLADO -->
+<!-- SECTION 2: FORMULARIO DE INSPECCIÓN DETALLADO -->
         <div id="section-inspection-form" class="app-section d-none">
             <form id="form-botiquin" onsubmit="saveInspection(event)">
                 
@@ -340,8 +339,7 @@
 
             </form>
         </div>
-
-        <!-- SECTION 3: HISTORIAL -->
+<!-- SECTION 3: HISTORIAL -->
         <div id="section-history" class="app-section d-none">
             <div class="card card-custom p-4">
                 <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
@@ -873,20 +871,18 @@ async function exportToExcel() {
                     pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
                 });
 
-                // Título centralizado limpio (sin cuadro verde de error)
-                sheet1.mergeCells('C1:I2');
-                const titleCell = sheet1.getCell('C1');
-                titleCell.value = "FALCON FARMS\nSISTEMA DE CONTROL E INSPECCIÓN DE BOTIQUINES - SST";
-                titleCell.font = { size: 15, bold: true, color: { argb: 'FF1B5E20' }, name: 'Calibri' };
+                sheet1.mergeCells('B1:I2');
+                const titleCell = sheet1.getCell('B1');
+                titleCell.value = "FALCON FARMS - SSTA\nSISTEMA DE CONTROL E INSPECCIÓN DE BOTIQUINES";
+                titleCell.font = { size: 14, bold: true, color: { argb: 'FF1B5E20' }, name: 'Calibri' };
                 titleCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
-                sheet1.mergeCells('C3:I3');
-                const subCell = sheet1.getCell('C3');
+                sheet1.mergeCells('B3:I3');
+                const subCell = sheet1.getCell('B3');
                 subCell.value = `Reporte generado el ${new Date().toLocaleDateString('es-CO')} a las ${new Date().toLocaleTimeString('es-CO')}  —  Total de registros: ${currentInspections.length}`;
                 subCell.font = { size: 9, italic: true, color: { argb: 'FF666666' } };
                 subCell.alignment = { horizontal: 'center' };
 
-                // Encabezados exactos para Botiquines
                 const headerRowIndex = 5;
                 const headers1 = ["Fecha Inspección", "ID Botiquín", "Ubicación", "Tipo", "Subtipo", "Capacidad", "Estado", "Inspector", "Próxima Revisión"];
                 const headerRow1 = sheet1.getRow(headerRowIndex);
@@ -918,9 +914,9 @@ async function exportToExcel() {
                     row.getCell(8).value = item.inspector || '';
                     row.getCell(9).value = item.expiryDate || '2027-05-15';
 
-                    let fillColor = 'FFC8E6C9'; // Verde OK
-                    if (item.status === 'Próximo a Vencer') fillColor = 'FFFFE0B2'; // Amarillo
-                    if (item.status === 'Inoperativo') fillColor = 'FFFFCDD2'; // Rojo
+                    let fillColor = 'FFC8E6C9'; 
+                    if (item.status === 'Próximo a Vencer') fillColor = 'FFFFE0B2'; 
+                    if (item.status === 'Inoperativo') fillColor = 'FFFFCDD2'; 
                     row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillColor } };
                     row.getCell(7).font = { bold: true };
 
@@ -1018,7 +1014,7 @@ async function exportToExcel() {
                         let photoRow = currentRow + 1;
                         sheet3.getRow(photoRow).height = 85;
 
-                        photos.forEach((p, i) => {
+                        photos.forEach((p) => {
                             const match = /^data:image\/(\w+);base64,(.+)$/.exec(p || '');
                             if (match) {
                                 let ext = match[1].toLowerCase();
