@@ -457,14 +457,29 @@
         let signaturePad = null;
 
         window.onload = function() {
-            populateBotiquinDropdown();
-            loadStorage();
-            renderChecklistTable();
-            updateDashboard();
-            renderHistory();
-            initSignaturePad();
-            checkUrlParams();
-        };
+    populateBotiquinDropdown();
+    loadStorage();
+    renderChecklistTable();
+    updateDashboard();
+    renderHistory();
+    initSignaturePad();
+    checkUrlParams(); // <--- Esta función lee el QR y abre el formulario
+};
+
+function checkUrlParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const botParam = urlParams.get('id');
+    if (botParam) {
+        // Formatea el número a "BOT-XXX" (ej: 1 pasa a BOT-001)
+        const formattedId = `BOT-${String(botParam).padStart(3, '0')}`;
+        const select = document.getElementById('bot-id');
+        select.value = formattedId;
+        
+        // Ejecuta la función que autocompleta los datos y muestra el formulario
+        autoFillBotiquinData();
+        showSection('inspection-form');
+    }
+}
 
         function populateBotiquinDropdown() {
             const select = document.getElementById('bot-id');
